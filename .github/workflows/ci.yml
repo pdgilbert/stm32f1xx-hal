@@ -51,7 +51,11 @@ jobs:
           args: --features=${{ matrix.mcu }} --target x86_64-unknown-linux-gnu --lib
 
       - name: Build thumbv7m-none-eabi
-        run: build  --features=${{ matrix.mcu }} --target thumbv7m-none-eabi --release 
+        uses: actions-rs/cargo@v1
+           with: build
+           args:   --features=${{ matrix.mcu }} --target thumbv7m-none-eabi --release 
 
       - name: Build blinky
-        run: build  --features=${{ matrix.mcu }} --target thumbv7m-none-eabi --release  --example blinky
+        uses: actions-rs/cargo@v1
+           with: build
+           args:   --features=${{ matrix.mcu }} --target thumbv7m-none-eabi --release  --example blinky
