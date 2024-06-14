@@ -49,3 +49,15 @@ jobs:
         with:
           command: test
           args: --features=${{ matrix.mcu }} --target x86_64-unknown-linux-gnu --lib
+
+      - name: Build thumbv7m-none-eabi
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --features=${{ matrix.mcu }} --target thumbv7m-none-eabi
+
+      - name: Build blinky
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --features=${{ matrix.mcu }} --target thumbv7m-none-eabi --example blinky
