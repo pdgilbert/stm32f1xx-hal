@@ -151,3 +151,7 @@ required-features = ["stm32f103"]
 [[example]]
 name = "serial-interrupt-idle"
 required-features = ["stm32f103", "medium"]
+
+[[example]]
+name = "i2c"
+required-features = ["stm32f103"]
