@@ -19,7 +19,6 @@ use stm32f1xx_hal::{
     prelude::*,
     serial::{self, Config, Serial},
 };
-use unwrap_infallible::UnwrapInfallible;
 
 #[entry]
 fn main() -> ! {
@@ -36,7 +35,7 @@ fn main() -> ! {
     let clocks = rcc.cfgr.freeze(&mut flash.acr);
 
     // Prepare the alternate function I/O registers
-    let mut afio = p.AFIO.constrain();
+    //let mut afio = p.AFIO.constrain();
 
     // Prepare the GPIOB peripheral
     let mut gpiob = p.GPIOB.split();
@@ -64,14 +63,13 @@ fn main() -> ! {
     let mut serial = Serial::new(
         p.USART3,
         (tx, rx),
-        &mut afio.mapr,
         Config::default().baudrate(9600.bps()),
         &clocks,
     );
 
     // Loopback test. Write `X` and wait until the write is successful.
     let sent = b'X';
-    block!(serial.tx.write(sent)).unwrap_infallible();
+    block!(serial.tx.write_u8(sent)).unwrap();
 
     // Read the byte that was just sent. Blocks until the read is complete
     let received = block!(serial.rx.read()).unwrap();
@@ -88,7 +86,7 @@ fn main() -> ! {
 
     // Let's see if it works.'
     let sent = b'Y';
-    block!(serial.tx.write(sent)).unwrap_infallible();
+    block!(serial.tx.write_u8(sent)).unwrap();
     let received = block!(serial.rx.read()).unwrap();
     assert_eq!(received, sent);
     asm::bkpt();

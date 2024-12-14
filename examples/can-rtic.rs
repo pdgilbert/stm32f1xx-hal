@@ -82,18 +82,16 @@ mod app {
             .pclk2(64.MHz())
             .freeze(&mut flash.acr);
 
+        // Select pins for CAN1.
+        let gpioa = cx.device.GPIOA.split();
+        let can_rx_pin = gpioa.pa11;
+        let can_tx_pin = gpioa.pa12;
+
         #[cfg(not(feature = "connectivity"))]
-        let can = Can::new(cx.device.CAN1, cx.device.USB);
+        let can = Can::new(cx.device.CAN1, cx.device.USB, (can_tx_pin, can_rx_pin));
 
         #[cfg(feature = "connectivity")]
-        let can = Can::new(cx.device.CAN1);
-
-        // Select pins for CAN1.
-        let mut gpioa = cx.device.GPIOA.split();
-        let can_rx_pin = gpioa.pa11.into_floating_input(&mut gpioa.crh);
-        let can_tx_pin = gpioa.pa12.into_alternate_push_pull(&mut gpioa.crh);
-        let mut afio = cx.device.AFIO.constrain();
-        can.assign_pins((can_tx_pin, can_rx_pin), &mut afio.mapr);
+        let can = Can::new(cx.device.CAN1, (can_tx_pin, can_rx_pin));
 
         // APB1 (PCLK1): 16MHz, Bit rate: 1000kBit/s, Sample Point 87.5%
         // Value was calculated with http://www.bittiming.can-wiki.info/

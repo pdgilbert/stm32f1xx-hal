@@ -1,9 +1,10 @@
 //! # API for the Analog to Digital converter
 
 use core::marker::PhantomData;
-use embedded_hal::adc::{Channel, OneShot};
+use embedded_hal_02::adc::{Channel, OneShot};
+use fugit::HertzU32 as Hertz;
 
-#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl",),))]
+#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl")))]
 use crate::dma::dma2;
 use crate::dma::{dma1, CircBuffer, Receive, RxDma, Transfer, TransferPayload, W};
 use crate::gpio::{self, Analog};
@@ -25,7 +26,8 @@ pub struct Adc<ADC> {
     rb: ADC,
     sample_time: SampleTime,
     align: Align,
-    clocks: Clocks,
+    sysclk: Hertz,
+    adcclk: Hertz,
 }
 
 /// ADC sampling time
@@ -101,7 +103,7 @@ impl From<Align> for bool {
 }
 
 macro_rules! adc_pins {
-    ($ADC:ty, $($pin:ty => $chan:expr),+ $(,)*) => {
+    ($ADC:ty, $($pin:ty => $chan:literal),+ $(,)*) => {
         $(
             impl Channel<$ADC> for $pin {
                 type ID = u8;
@@ -113,59 +115,59 @@ macro_rules! adc_pins {
 }
 
 adc_pins!(pac::ADC1,
-    gpio::PA0<Analog> => 0_u8,
-    gpio::PA1<Analog> => 1_u8,
-    gpio::PA2<Analog> => 2_u8,
-    gpio::PA3<Analog> => 3_u8,
-    gpio::PA4<Analog> => 4_u8,
-    gpio::PA5<Analog> => 5_u8,
-    gpio::PA6<Analog> => 6_u8,
-    gpio::PA7<Analog> => 7_u8,
-    gpio::PB0<Analog> => 8_u8,
-    gpio::PB1<Analog> => 9_u8,
-    gpio::PC0<Analog> => 10_u8,
-    gpio::PC1<Analog> => 11_u8,
-    gpio::PC2<Analog> => 12_u8,
-    gpio::PC3<Analog> => 13_u8,
-    gpio::PC4<Analog> => 14_u8,
-    gpio::PC5<Analog> => 15_u8,
+    gpio::PA0<Analog> => 0,
+    gpio::PA1<Analog> => 1,
+    gpio::PA2<Analog> => 2,
+    gpio::PA3<Analog> => 3,
+    gpio::PA4<Analog> => 4,
+    gpio::PA5<Analog> => 5,
+    gpio::PA6<Analog> => 6,
+    gpio::PA7<Analog> => 7,
+    gpio::PB0<Analog> => 8,
+    gpio::PB1<Analog> => 9,
+    gpio::PC0<Analog> => 10,
+    gpio::PC1<Analog> => 11,
+    gpio::PC2<Analog> => 12,
+    gpio::PC3<Analog> => 13,
+    gpio::PC4<Analog> => 14,
+    gpio::PC5<Analog> => 15,
 );
 
 #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
 adc_pins!(pac::ADC2,
-    gpio::PA0<Analog> => 0_u8,
-    gpio::PA1<Analog> => 1_u8,
-    gpio::PA2<Analog> => 2_u8,
-    gpio::PA3<Analog> => 3_u8,
-    gpio::PA4<Analog> => 4_u8,
-    gpio::PA5<Analog> => 5_u8,
-    gpio::PA6<Analog> => 6_u8,
-    gpio::PA7<Analog> => 7_u8,
-    gpio::PB0<Analog> => 8_u8,
-    gpio::PB1<Analog> => 9_u8,
-    gpio::PC0<Analog> => 10_u8,
-    gpio::PC1<Analog> => 11_u8,
-    gpio::PC2<Analog> => 12_u8,
-    gpio::PC3<Analog> => 13_u8,
-    gpio::PC4<Analog> => 14_u8,
-    gpio::PC5<Analog> => 15_u8,
+    gpio::PA0<Analog> => 0,
+    gpio::PA1<Analog> => 1,
+    gpio::PA2<Analog> => 2,
+    gpio::PA3<Analog> => 3,
+    gpio::PA4<Analog> => 4,
+    gpio::PA5<Analog> => 5,
+    gpio::PA6<Analog> => 6,
+    gpio::PA7<Analog> => 7,
+    gpio::PB0<Analog> => 8,
+    gpio::PB1<Analog> => 9,
+    gpio::PC0<Analog> => 10,
+    gpio::PC1<Analog> => 11,
+    gpio::PC2<Analog> => 12,
+    gpio::PC3<Analog> => 13,
+    gpio::PC4<Analog> => 14,
+    gpio::PC5<Analog> => 15,
 );
 
-#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl",),))]
+#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl")))]
 adc_pins!(pac::ADC3,
-    gpio::PA0<Analog> => 0_u8,
-    gpio::PA1<Analog> => 1_u8,
-    gpio::PA2<Analog> => 2_u8,
-    gpio::PA3<Analog> => 3_u8,
-    gpio::PF6<Analog> => 4_u8,
-    gpio::PF7<Analog> => 5_u8,
-    gpio::PF8<Analog> => 6_u8,
-    gpio::PF9<Analog> => 7_u8,
-    gpio::PF10<Analog> => 8_u8,
-    gpio::PC0<Analog> => 10_u8,
-    gpio::PC1<Analog> => 11_u8,
-    gpio::PC2<Analog> => 12_u8,
-    gpio::PC3<Analog> => 13_u8,
+    gpio::PA0<Analog> => 0,
+    gpio::PA1<Analog> => 1,
+    gpio::PA2<Analog> => 2,
+    gpio::PA3<Analog> => 3,
+    gpio::PF6<Analog> => 4,
+    gpio::PF7<Analog> => 5,
+    gpio::PF8<Analog> => 6,
+    gpio::PF9<Analog> => 7,
+    gpio::PF10<Analog> => 8,
+    gpio::PC0<Analog> => 10,
+    gpio::PC1<Analog> => 11,
+    gpio::PC2<Analog> => 12,
+    gpio::PC3<Analog> => 13,
 );
 
 /// Stored ADC config can be restored using the `Adc::restore_cfg` method
@@ -183,12 +185,13 @@ macro_rules! adc_hal {
                 ///
                 /// Sets all configurable parameters to one-shot defaults,
                 /// performs a boot-time calibration.
-                pub fn $adc(adc: $ADC, clocks: Clocks) -> Self {
+                pub fn $adc(adc: $ADC, clocks: &Clocks) -> Self {
                     let mut s = Self {
                         rb: adc,
                         sample_time: SampleTime::default(),
                         align: Align::default(),
-                        clocks,
+                        sysclk: clocks.sysclk(),
+                        adcclk: clocks.adcclk(),
                     };
                     s.enable_clock();
                     s.power_down();
@@ -199,9 +202,9 @@ macro_rules! adc_hal {
                     // The manual states that we need to wait two ADC clocks cycles after power-up
                     // before starting calibration, we already delayed in the power-up process, but
                     // if the adc clock is too low that was not enough.
-                    if s.clocks.adcclk() < kHz(2500) {
-                        let two_adc_cycles = s.clocks.sysclk() / s.clocks.adcclk() * 2;
-                        let already_delayed = s.clocks.sysclk() / kHz(800);
+                    if s.adcclk < kHz(2500) {
+                        let two_adc_cycles = s.sysclk / s.adcclk * 2;
+                        let already_delayed = s.sysclk / kHz(800);
                         if two_adc_cycles > already_delayed {
                             delay(two_adc_cycles - already_delayed);
                         }
@@ -231,14 +234,14 @@ macro_rules! adc_hal {
 
                 /// Set ADC sampling time
                 ///
-                /// Options can be found in [SampleTime](crate::adc::SampleTime).
+                /// Options can be found in [SampleTime].
                 pub fn set_sample_time(&mut self, t_samp: SampleTime) {
                     self.sample_time = t_samp;
                 }
 
                 /// Set the Adc result alignment
                 ///
-                /// Options can be found in [Align](crate::adc::Align).
+                /// Options can be found in [Align].
                 pub fn set_align(&mut self, align: Align) {
                     self.align = align;
                 }
@@ -246,28 +249,28 @@ macro_rules! adc_hal {
                 /// Returns the largest possible sample value for the current settings
                 pub fn max_sample(&self) -> u16 {
                     match self.align {
-                        Align::Left => u16::max_value(),
+                        Align::Left => u16::MAX,
                         Align::Right => (1 << 12) - 1,
                     }
                 }
 
                 #[inline(always)]
-                pub fn set_external_trigger(&mut self, trigger: crate::pac::$adc::cr2::EXTSEL_A) {
-                    self.rb.cr2.modify(|_, w| w.extsel().variant(trigger))
+                pub fn set_external_trigger(&mut self, trigger: crate::pac::$adc::cr2::EXTSEL) {
+                    self.rb.cr2().modify(|_, w| w.extsel().variant(trigger))
                 }
 
                 fn power_up(&mut self) {
-                    self.rb.cr2.modify(|_, w| w.adon().set_bit());
+                    self.rb.cr2().modify(|_, w| w.adon().set_bit());
 
                     // The reference manual says that a stabilization time is needed after power_up,
                     // this time can be found in the datasheets.
                     // Here we are delaying for approximately 1us, considering 1.25 instructions per
                     // cycle. Do we support a chip which needs more than 1us ?
-                    delay(self.clocks.sysclk() / kHz(800));
+                    delay(self.sysclk / kHz(800));
                 }
 
                 fn power_down(&mut self) {
-                    self.rb.cr2.modify(|_, w| w.adon().clear_bit());
+                    self.rb.cr2().modify(|_, w| w.adon().clear_bit());
                 }
 
                 fn reset(&mut self) {
@@ -287,51 +290,51 @@ macro_rules! adc_hal {
 
                 fn calibrate(&mut self) {
                     /* reset calibration */
-                    self.rb.cr2.modify(|_, w| w.rstcal().set_bit());
-                    while self.rb.cr2.read().rstcal().bit_is_set() {}
+                    self.rb.cr2().modify(|_, w| w.rstcal().set_bit());
+                    while self.rb.cr2().read().rstcal().bit_is_set() {}
 
                     /* calibrate */
-                    self.rb.cr2.modify(|_, w| w.cal().set_bit());
-                    while self.rb.cr2.read().cal().bit_is_set() {}
+                    self.rb.cr2().modify(|_, w| w.cal().set_bit());
+                    while self.rb.cr2().read().cal().bit_is_set() {}
                 }
 
                 fn setup_oneshot(&mut self) {
-                    self.rb.cr2.modify(|_, w| w
+                    self.rb.cr2().modify(|_, w| w
                         .cont().clear_bit()
                         .exttrig().set_bit()
-                        .extsel().bits(0b111)
+                        .extsel().swstart()
                     );
 
-                    self.rb.cr1.modify(|_, w| w
+                    self.rb.cr1().modify(|_, w| w
                         .scan().clear_bit()
                         .discen().set_bit()
                     );
 
-                    self.rb.sqr1.modify(|_, w| w.l().bits(0b0));
+                    self.rb.sqr1().modify(|_, w| w.l().set(0b0));
                 }
 
                 fn set_channel_sample_time(&mut self, chan: u8, sample_time: SampleTime) {
                     let sample_time = sample_time.into();
                     match chan {
-                        0 => self.rb.smpr2.modify(|_, w| w.smp0().bits(sample_time)),
-                        1 => self.rb.smpr2.modify(|_, w| w.smp1().bits(sample_time)),
-                        2 => self.rb.smpr2.modify(|_, w| w.smp2().bits(sample_time)),
-                        3 => self.rb.smpr2.modify(|_, w| w.smp3().bits(sample_time)),
-                        4 => self.rb.smpr2.modify(|_, w| w.smp4().bits(sample_time)),
-                        5 => self.rb.smpr2.modify(|_, w| w.smp5().bits(sample_time)),
-                        6 => self.rb.smpr2.modify(|_, w| w.smp6().bits(sample_time)),
-                        7 => self.rb.smpr2.modify(|_, w| w.smp7().bits(sample_time)),
-                        8 => self.rb.smpr2.modify(|_, w| w.smp8().bits(sample_time)),
-                        9 => self.rb.smpr2.modify(|_, w| w.smp9().bits(sample_time)),
+                        0 => self.rb.smpr2().modify(|_, w| w.smp0().set(sample_time)),
+                        1 => self.rb.smpr2().modify(|_, w| w.smp1().set(sample_time)),
+                        2 => self.rb.smpr2().modify(|_, w| w.smp2().set(sample_time)),
+                        3 => self.rb.smpr2().modify(|_, w| w.smp3().set(sample_time)),
+                        4 => self.rb.smpr2().modify(|_, w| w.smp4().set(sample_time)),
+                        5 => self.rb.smpr2().modify(|_, w| w.smp5().set(sample_time)),
+                        6 => self.rb.smpr2().modify(|_, w| w.smp6().set(sample_time)),
+                        7 => self.rb.smpr2().modify(|_, w| w.smp7().set(sample_time)),
+                        8 => self.rb.smpr2().modify(|_, w| w.smp8().set(sample_time)),
+                        9 => self.rb.smpr2().modify(|_, w| w.smp9().set(sample_time)),
 
-                        10 => self.rb.smpr1.modify(|_, w| w.smp10().bits(sample_time)),
-                        11 => self.rb.smpr1.modify(|_, w| w.smp11().bits(sample_time)),
-                        12 => self.rb.smpr1.modify(|_, w| w.smp12().bits(sample_time)),
-                        13 => self.rb.smpr1.modify(|_, w| w.smp13().bits(sample_time)),
-                        14 => self.rb.smpr1.modify(|_, w| w.smp14().bits(sample_time)),
-                        15 => self.rb.smpr1.modify(|_, w| w.smp15().bits(sample_time)),
-                        16 => self.rb.smpr1.modify(|_, w| w.smp16().bits(sample_time)),
-                        17 => self.rb.smpr1.modify(|_, w| w.smp17().bits(sample_time)),
+                        10 => self.rb.smpr1().modify(|_, w| w.smp10().set(sample_time)),
+                        11 => self.rb.smpr1().modify(|_, w| w.smp11().set(sample_time)),
+                        12 => self.rb.smpr1().modify(|_, w| w.smp12().set(sample_time)),
+                        13 => self.rb.smpr1().modify(|_, w| w.smp13().set(sample_time)),
+                        14 => self.rb.smpr1().modify(|_, w| w.smp14().set(sample_time)),
+                        15 => self.rb.smpr1().modify(|_, w| w.smp15().set(sample_time)),
+                        16 => self.rb.smpr1().modify(|_, w| w.smp16().set(sample_time)),
+                        17 => self.rb.smpr1().modify(|_, w| w.smp17().set(sample_time)),
                         _ => unreachable!(),
                     }
                 }
@@ -341,14 +344,14 @@ macro_rules! adc_hal {
                     let bits = channels.iter().take(6).enumerate().fold(0u32, |s, (i, c)|
                         s | ((*c as u32) << (i * 5))
                     );
-                    self.rb.sqr3.write(|w| unsafe { w
+                    self.rb.sqr3().write(|w| unsafe { w
                         .bits( bits )
                     });
                     if len > 6 {
                         let bits = channels.iter().skip(6).take(6).enumerate().fold(0u32, |s, (i, c)|
                             s | ((*c as u32) << (i * 5))
                         );
-                        self.rb.sqr2.write(|w| unsafe { w
+                        self.rb.sqr2().write(|w| unsafe { w
                             .bits( bits )
                         });
                     }
@@ -356,20 +359,20 @@ macro_rules! adc_hal {
                         let bits = channels.iter().skip(12).take(4).enumerate().fold(0u32, |s, (i, c)|
                             s | ((*c as u32) << (i * 5))
                         );
-                        self.rb.sqr1.write(|w| unsafe { w
+                        self.rb.sqr1().write(|w| unsafe { w
                             .bits( bits )
                         });
                     }
-                    self.rb.sqr1.modify(|_, w| w.l().bits((len-1) as u8));
+                    self.rb.sqr1().modify(|_, w| w.l().set((len-1) as u8));
                 }
 
                 fn set_continuous_mode(&mut self, continuous: bool) {
-                    self.rb.cr2.modify(|_, w| w.cont().bit(continuous));
+                    self.rb.cr2().modify(|_, w| w.cont().bit(continuous));
                 }
 
                 fn set_discontinuous_mode(&mut self, channels_count: Option<u8>) {
-                    self.rb.cr1.modify(|_, w| match channels_count {
-                        Some(count) => w.discen().set_bit().discnum().bits(count),
+                    self.rb.cr1().modify(|_, w| match channels_count {
+                        Some(count) => w.discen().set_bit().discnum().set(count),
                         None => w.discen().clear_bit(),
                     });
                 }
@@ -391,22 +394,21 @@ macro_rules! adc_hal {
                     // Dummy read in case something accidentally triggered
                     // a conversion by writing to CR2 without changing any
                     // of the bits
-                    self.rb.dr.read().data().bits();
+                    self.rb.dr().read().data().bits();
 
                     self.set_channel_sample_time(chan, self.sample_time);
-                    self.rb.sqr3.modify(|_, w| unsafe { w.sq1().bits(chan) });
+                    self.rb.sqr3().modify(|_, w| unsafe { w.sq1().bits(chan) });
 
                     // ADC start conversion of regular sequence
-                    self.rb.cr2.modify(|_, w|
-                        w
-                            .swstart().set_bit()
-                            .align().bit(self.align.into())
-                    );
-                    while self.rb.cr2.read().swstart().bit_is_set() {}
+                    self.rb.cr2().modify(|_, w| {
+                        w.swstart().set_bit();
+                        w.align().bit(self.align.into())
+                    });
+                    while self.rb.cr2().read().swstart().bit_is_set() {}
                     // ADC wait for conversion results
-                    while self.rb.sr.read().eoc().bit_is_clear() {}
+                    while self.rb.sr().read().eoc().bit_is_clear() {}
 
-                    let res = self.rb.dr.read().data().bits();
+                    let res = self.rb.dr().read().data().bits();
                     res
                 }
 
@@ -456,14 +458,14 @@ macro_rules! adc_hal {
 
 impl Adc<pac::ADC1> {
     fn read_aux(&mut self, chan: u8) -> u16 {
-        let tsv_off = if self.rb.cr2.read().tsvrefe().bit_is_clear() {
-            self.rb.cr2.modify(|_, w| w.tsvrefe().set_bit());
+        let tsv_off = if self.rb.cr2().read().tsvrefe().bit_is_clear() {
+            self.rb.cr2().modify(|_, w| w.tsvrefe().set_bit());
 
             // The reference manual says that a stabilization time is needed after the powering the
             // sensor, this time can be found in the datasheets.
             // Here we are delaying for approximately 10us, considering 1.25 instructions per
             // cycle. Do we support a chip which needs more than 10us ?
-            delay(self.clocks.sysclk().raw() / 80_000);
+            delay(self.sysclk.raw() / 80_000);
             true
         } else {
             false
@@ -472,7 +474,7 @@ impl Adc<pac::ADC1> {
         let val = self.convert(chan);
 
         if tsv_off {
-            self.rb.cr2.modify(|_, w| w.tsvrefe().clear_bit());
+            self.rb.cr2().modify(|_, w| w.tsvrefe().clear_bit());
         }
 
         val
@@ -503,7 +505,7 @@ impl Adc<pac::ADC1> {
         // recommended ADC sampling for temperature sensor is 17.1 usec,
         // so use the following approximate settings
         // to support all ADC frequencies
-        let sample_time = match self.clocks.adcclk().raw() {
+        let sample_time = match self.adcclk.raw() {
             0..=1_200_000 => SampleTime::T_1,
             1_200_001..=1_500_000 => SampleTime::T_7,
             1_500_001..=2_400_000 => SampleTime::T_13,
@@ -546,7 +548,7 @@ adc_hal! {
     pac::ADC2: (adc2),
 }
 
-#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl",),))]
+#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl")))]
 adc_hal! {
     pac::ADC3: (adc3),
 }
@@ -615,19 +617,23 @@ macro_rules! adcdma {
         impl<PINS> TransferPayload for AdcDma<$ADCX, PINS, Continuous, $dmarxch> {
             fn start(&mut self) {
                 self.channel.start();
-                self.payload.adc.rb.cr2.modify(|_, w| w.cont().set_bit());
-                self.payload.adc.rb.cr2.modify(|_, w| w.adon().set_bit());
+                self.payload.adc.rb.cr2().modify(|_, w| w.cont().set_bit());
+                self.payload.adc.rb.cr2().modify(|_, w| w.adon().set_bit());
             }
             fn stop(&mut self) {
                 self.channel.stop();
-                self.payload.adc.rb.cr2.modify(|_, w| w.cont().clear_bit());
+                self.payload
+                    .adc
+                    .rb
+                    .cr2()
+                    .modify(|_, w| w.cont().clear_bit());
             }
         }
 
         impl<PINS> TransferPayload for AdcDma<$ADCX, PINS, Scan, $dmarxch> {
             fn start(&mut self) {
                 self.channel.start();
-                self.payload.adc.rb.cr2.modify(|_, w| w.adon().set_bit());
+                self.payload.adc.rb.cr2().modify(|_, w| w.adon().set_bit());
             }
             fn stop(&mut self) {
                 self.channel.stop();
@@ -643,13 +649,15 @@ macro_rules! adcdma {
             where
                 PIN: Channel<$ADCX, ID = u8>,
             {
-                self.rb.cr1.modify(|_, w| w.discen().clear_bit());
-                self.rb.cr2.modify(|_, w| w.align().bit(self.align.into()));
+                self.rb.cr1().modify(|_, w| w.discen().clear_bit());
+                self.rb
+                    .cr2()
+                    .modify(|_, w| w.align().bit(self.align.into()));
                 self.set_channel_sample_time(PIN::channel(), self.sample_time);
                 self.rb
-                    .sqr3
+                    .sqr3()
                     .modify(|_, w| unsafe { w.sq1().bits(PIN::channel()) });
-                self.rb.cr2.modify(|_, w| w.dma().set_bit());
+                self.rb.cr2().modify(|_, w| w.dma().set_bit());
 
                 let payload = AdcPayload {
                     adc: self,
@@ -670,23 +678,19 @@ macro_rules! adcdma {
             where
                 Self: SetChannels<PINS>,
             {
-                self.rb.cr2.modify(|_, w| {
-                    w.adon()
-                        .clear_bit()
-                        .dma()
-                        .clear_bit()
-                        .cont()
-                        .clear_bit()
-                        .align()
-                        .bit(self.align.into())
+                self.rb.cr2().modify(|_, w| {
+                    w.adon().clear_bit();
+                    w.dma().clear_bit();
+                    w.cont().clear_bit();
+                    w.align().bit(self.align.into())
                 });
                 self.rb
-                    .cr1
+                    .cr1()
                     .modify(|_, w| w.scan().set_bit().discen().clear_bit());
                 self.set_samples();
                 self.set_sequence();
                 self.rb
-                    .cr2
+                    .cr2()
                     .modify(|_, w| w.dma().set_bit().adon().set_bit());
 
                 let payload = AdcPayload {
@@ -709,8 +713,8 @@ macro_rules! adcdma {
                 self.stop();
 
                 let AdcDma { payload, channel } = self;
-                payload.adc.rb.cr2.modify(|_, w| w.dma().clear_bit());
-                payload.adc.rb.cr1.modify(|_, w| w.discen().set_bit());
+                payload.adc.rb.cr2().modify(|_, w| w.dma().clear_bit());
+                payload.adc.rb.cr1().modify(|_, w| w.discen().set_bit());
 
                 (payload.adc, payload.pins, channel)
             }
@@ -724,9 +728,9 @@ macro_rules! adcdma {
                 self.stop();
 
                 let AdcDma { payload, channel } = self;
-                payload.adc.rb.cr2.modify(|_, w| w.dma().clear_bit());
-                payload.adc.rb.cr1.modify(|_, w| w.discen().set_bit());
-                payload.adc.rb.cr1.modify(|_, w| w.scan().clear_bit());
+                payload.adc.rb.cr2().modify(|_, w| w.dma().clear_bit());
+                payload.adc.rb.cr1().modify(|_, w| w.discen().set_bit());
+                payload.adc.rb.cr1().modify(|_, w| w.scan().clear_bit());
 
                 (payload.adc, payload.pins, channel)
             }
@@ -743,7 +747,7 @@ macro_rules! adcdma {
                 // until the end of the transfer.
                 let (ptr, len) = unsafe { buffer.write_buffer() };
                 self.channel.set_peripheral_address(
-                    unsafe { &(*<$ADCX>::ptr()).dr as *const _ as u32 },
+                    unsafe { (*<$ADCX>::ptr()).dr().as_ptr() as u32 },
                     false,
                 );
                 self.channel.set_memory_address(ptr as u32, true);
@@ -751,19 +755,13 @@ macro_rules! adcdma {
 
                 atomic::compiler_fence(Ordering::Release);
 
-                self.channel.ch().cr.modify(|_, w| {
-                    w.mem2mem()
-                        .clear_bit()
-                        .pl()
-                        .medium()
-                        .msize()
-                        .bits16()
-                        .psize()
-                        .bits16()
-                        .circ()
-                        .set_bit()
-                        .dir()
-                        .clear_bit()
+                self.channel.ch().cr().modify(|_, w| {
+                    w.mem2mem().clear_bit();
+                    w.pl().medium();
+                    w.msize().bits16();
+                    w.psize().bits16();
+                    w.circ().set_bit();
+                    w.dir().clear_bit()
                 });
 
                 self.start();
@@ -782,26 +780,20 @@ macro_rules! adcdma {
                 // until the end of the transfer.
                 let (ptr, len) = unsafe { buffer.write_buffer() };
                 self.channel.set_peripheral_address(
-                    unsafe { &(*<$ADCX>::ptr()).dr as *const _ as u32 },
+                    unsafe { (*<$ADCX>::ptr()).dr().as_ptr() as u32 },
                     false,
                 );
                 self.channel.set_memory_address(ptr as u32, true);
                 self.channel.set_transfer_length(len);
 
                 atomic::compiler_fence(Ordering::Release);
-                self.channel.ch().cr.modify(|_, w| {
-                    w.mem2mem()
-                        .clear_bit()
-                        .pl()
-                        .medium()
-                        .msize()
-                        .bits16()
-                        .psize()
-                        .bits16()
-                        .circ()
-                        .clear_bit()
-                        .dir()
-                        .clear_bit()
+                self.channel.ch().cr().modify(|_, w| {
+                    w.mem2mem().clear_bit();
+                    w.pl().medium();
+                    w.msize().bits16();
+                    w.psize().bits16();
+                    w.circ().clear_bit();
+                    w.dir().clear_bit()
                 });
                 self.start();
 
@@ -818,7 +810,7 @@ adcdma! {
     )
 }
 
-#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl",),))]
+#[cfg(all(feature = "stm32f103", any(feature = "high", feature = "xl")))]
 adcdma! {
     pac::ADC3: (
         AdcDma3,

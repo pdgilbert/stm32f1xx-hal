@@ -166,7 +166,8 @@ impl<'a> FlashWriter<'a> {
         self.lock()?;
 
         if sr.wrprterr().bit_is_set() {
-            self.flash.sr.sr().modify(|_, w| w.wrprterr().clear_bit());
+            // reset by writing 1
+            self.flash.sr.sr().modify(|_, w| w.wrprterr().bit(true));
             Err(Error::EraseError)
         } else {
             if self.verify {
@@ -257,12 +258,14 @@ impl<'a> FlashWriter<'a> {
 
             // Check for errors
             if self.flash.sr.sr().read().pgerr().bit_is_set() {
-                self.flash.sr.sr().modify(|_, w| w.pgerr().clear_bit());
+                // reset by writing 1
+                self.flash.sr.sr().modify(|_, w| w.pgerr().bit(true));
 
                 self.lock()?;
                 return Err(Error::ProgrammingError);
             } else if self.flash.sr.sr().read().wrprterr().bit_is_set() {
-                self.flash.sr.sr().modify(|_, w| w.wrprterr().clear_bit());
+                // reset by writing 1
+                self.flash.sr.sr().modify(|_, w| w.wrprterr().bit(true));
 
                 self.lock()?;
                 return Err(Error::WriteError);
@@ -306,14 +309,14 @@ pub trait FlashExt {
 impl FlashExt for FLASH {
     fn constrain(self) -> Parts {
         Parts {
-            acr: ACR { _0: () },
-            ar: AR { _0: () },
-            cr: CR { _0: () },
-            keyr: KEYR { _0: () },
-            _obr: OBR { _0: () },
-            _optkeyr: OPTKEYR { _0: () },
-            sr: SR { _0: () },
-            _wrpr: WRPR { _0: () },
+            acr: ACR,
+            ar: AR,
+            cr: CR,
+            keyr: KEYR,
+            _obr: OBR,
+            _optkeyr: OPTKEYR,
+            sr: SR,
+            _wrpr: WRPR,
         }
     }
 }
@@ -356,105 +359,97 @@ impl Parts {
 }
 
 /// Opaque ACR register
-pub struct ACR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct ACR;
 
 #[allow(dead_code)]
 impl ACR {
     pub(crate) fn acr(&mut self) -> &flash::ACR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).acr }
+        unsafe { (*FLASH::ptr()).acr() }
     }
 }
 
 /// Opaque AR register
-pub struct AR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct AR;
 
 #[allow(dead_code)]
 impl AR {
     pub(crate) fn ar(&mut self) -> &flash::AR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).ar }
+        unsafe { (*FLASH::ptr()).ar() }
     }
 }
 
 /// Opaque CR register
-pub struct CR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct CR;
 
 #[allow(dead_code)]
 impl CR {
     pub(crate) fn cr(&mut self) -> &flash::CR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).cr }
+        unsafe { (*FLASH::ptr()).cr() }
     }
 }
 
 /// Opaque KEYR register
-pub struct KEYR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct KEYR;
 
 #[allow(dead_code)]
 impl KEYR {
     pub(crate) fn keyr(&mut self) -> &flash::KEYR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).keyr }
+        unsafe { (*FLASH::ptr()).keyr() }
     }
 }
 
 /// Opaque OBR register
-pub struct OBR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct OBR;
 
 #[allow(dead_code)]
 impl OBR {
     pub(crate) fn obr(&mut self) -> &flash::OBR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).obr }
+        unsafe { (*FLASH::ptr()).obr() }
     }
 }
 
 /// Opaque OPTKEYR register
-pub struct OPTKEYR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct OPTKEYR;
 
 #[allow(dead_code)]
 impl OPTKEYR {
     pub(crate) fn optkeyr(&mut self) -> &flash::OPTKEYR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).optkeyr }
+        unsafe { (*FLASH::ptr()).optkeyr() }
     }
 }
 
 /// Opaque SR register
-pub struct SR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct SR;
 
 #[allow(dead_code)]
 impl SR {
     pub(crate) fn sr(&mut self) -> &flash::SR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).sr }
+        unsafe { (*FLASH::ptr()).sr() }
     }
 }
 
 /// Opaque WRPR register
-pub struct WRPR {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct WRPR;
 
 #[allow(dead_code)]
 impl WRPR {
     pub(crate) fn wrpr(&mut self) -> &flash::WRPR {
         // NOTE(unsafe) this proxy grants exclusive access to this register
-        unsafe { &(*FLASH::ptr()).wrpr }
+        unsafe { (*FLASH::ptr()).wrpr() }
     }
 }

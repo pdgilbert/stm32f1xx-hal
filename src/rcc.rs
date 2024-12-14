@@ -22,13 +22,14 @@ impl RccExt for RCC {
         Rcc {
             cfgr: CFGR {
                 hse: None,
+                hse_bypass: false,
                 hclk: None,
                 pclk1: None,
                 pclk2: None,
                 sysclk: None,
                 adcclk: None,
             },
-            bkp: BKP { _0: () },
+            bkp: BKP,
         }
     }
 }
@@ -48,28 +49,26 @@ pub struct Rcc {
 }
 
 /// AMBA High-performance Bus (AHB) registers
-pub struct AHB {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct AHB;
 
 impl AHB {
     fn enr(rcc: &rcc::RegisterBlock) -> &rcc::AHBENR {
-        &rcc.ahbenr
+        rcc.ahbenr()
     }
 }
 
 /// Advanced Peripheral Bus 1 (APB1) registers
-pub struct APB1 {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct APB1;
 
 impl APB1 {
     fn enr(rcc: &rcc::RegisterBlock) -> &rcc::APB1ENR {
-        &rcc.apb1enr
+        rcc.apb1enr()
     }
 
     fn rstr(rcc: &rcc::RegisterBlock) -> &rcc::APB1RSTR {
-        &rcc.apb1rstr
+        rcc.apb1rstr()
     }
 }
 
@@ -82,17 +81,16 @@ impl APB1 {
 }
 
 /// Advanced Peripheral Bus 2 (APB2) registers
-pub struct APB2 {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct APB2;
 
 impl APB2 {
     fn enr(rcc: &rcc::RegisterBlock) -> &rcc::APB2ENR {
-        &rcc.apb2enr
+        rcc.apb2enr()
     }
 
     fn rstr(rcc: &rcc::RegisterBlock) -> &rcc::APB2RSTR {
-        &rcc.apb2rstr
+        rcc.apb2rstr()
     }
 }
 
@@ -110,6 +108,7 @@ const HSI: u32 = 8_000_000; // Hz
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct CFGR {
     hse: Option<u32>,
+    hse_bypass: bool,
     hclk: Option<u32>,
     pclk1: Option<u32>,
     pclk2: Option<u32>,
@@ -125,6 +124,20 @@ impl CFGR {
     pub fn use_hse(mut self, freq: Hertz) -> Self {
         self.hse = Some(freq.raw());
         self
+    }
+
+    /// Bypasses the high-speed external oscillator and uses an external clock input on the OSC_IN
+    /// pin.
+    ///
+    /// For this configuration, the OSC_IN pin should be connected to a clock source with a
+    /// frequency specified in the call to use_hse(), and the OSC_OUT pin should not be connected.
+    ///
+    /// This function has no effect unless use_hse() is also called.
+    pub fn bypass_hse_oscillator(self) -> Self {
+        Self {
+            hse_bypass: true,
+            ..self
+        }
     }
 
     /// Sets the desired frequency for the HCLK clock
@@ -208,27 +221,32 @@ impl CFGR {
         if cfg.hse.is_some() {
             // enable HSE and wait for it to be ready
 
-            rcc.cr.modify(|_, w| w.hseon().set_bit());
+            rcc.cr().modify(|_, w| {
+                if cfg.hse_bypass {
+                    w.hsebyp().bypassed();
+                }
+                w.hseon().set_bit()
+            });
 
-            while rcc.cr.read().hserdy().bit_is_clear() {}
+            while rcc.cr().read().hserdy().bit_is_clear() {}
         }
 
         if let Some(pllmul_bits) = cfg.pllmul {
             // enable PLL and wait for it to be ready
 
             #[allow(unused_unsafe)]
-            rcc.cfgr.modify(|_, w| unsafe {
+            rcc.cfgr().modify(|_, w| unsafe {
                 w.pllmul().bits(pllmul_bits).pllsrc().bit(cfg.hse.is_some())
             });
 
-            rcc.cr.modify(|_, w| w.pllon().set_bit());
+            rcc.cr().modify(|_, w| w.pllon().set_bit());
 
-            while rcc.cr.read().pllrdy().bit_is_clear() {}
+            while rcc.cr().read().pllrdy().bit_is_clear() {}
         }
 
         // set prescalers and clock source
         #[cfg(feature = "connectivity")]
-        rcc.cfgr.modify(|_, w| unsafe {
+        rcc.cfgr().modify(|_, w| unsafe {
             w.adcpre().variant(cfg.adcpre);
             w.ppre2()
                 .bits(cfg.ppre2 as u8)
@@ -252,7 +270,7 @@ impl CFGR {
         });
 
         #[cfg(feature = "stm32f103")]
-        rcc.cfgr.modify(|_, w| unsafe {
+        rcc.cfgr().modify(|_, w| unsafe {
             w.adcpre().variant(cfg.adcpre);
             w.ppre2()
                 .bits(cfg.ppre2 as u8)
@@ -273,7 +291,7 @@ impl CFGR {
         });
 
         #[cfg(any(feature = "stm32f100", feature = "stm32f101"))]
-        rcc.cfgr.modify(|_, w| unsafe {
+        rcc.cfgr().modify(|_, w| unsafe {
             w.adcpre().variant(cfg.adcpre);
             w.ppre2()
                 .bits(cfg.ppre2 as u8)
@@ -298,9 +316,8 @@ impl CFGR {
     }
 }
 
-pub struct BKP {
-    _0: (),
-}
+#[non_exhaustive]
+pub struct BKP;
 
 impl BKP {
     /// Enables write access to the registers in the backup domain
@@ -311,7 +328,7 @@ impl BKP {
         crate::pac::PWR::enable(rcc);
 
         // Enable access to the backup registers
-        pwr.cr.modify(|_r, w| w.dbp().set_bit());
+        pwr.cr().modify(|_r, w| w.dbp().set_bit());
 
         BackupDomain { _regs: bkp }
     }
@@ -478,6 +495,7 @@ pub trait Reset: RccBus {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Config {
     pub hse: Option<u32>,
+    pub hse_bypass: bool,
     pub pllmul: Option<u8>,
     pub hpre: HPre,
     pub ppre1: PPre,
@@ -485,19 +503,22 @@ pub struct Config {
     #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
     pub usbpre: UsbPre,
     pub adcpre: AdcPre,
+    pub allow_overclock: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             hse: None,
+            hse_bypass: false,
             pllmul: None,
             hpre: HPre::Div1,
             ppre1: PPre::Div1,
             ppre2: PPre::Div1,
             #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
-            usbpre: UsbPre::Div15,
+            usbpre: UsbPre::Div1_5,
             adcpre: AdcPre::Div2,
+            allow_overclock: false,
         }
     }
 }
@@ -541,14 +562,15 @@ pub enum PPre {
 }
 
 #[cfg(feature = "stm32f103")]
-pub type UsbPre = rcc::cfgr::USBPRE_A;
+pub type UsbPre = rcc::cfgr::USBPRE;
 #[cfg(feature = "connectivity")]
-pub type UsbPre = rcc::cfgr::OTGFSPRE_A;
-pub type AdcPre = rcc::cfgr::ADCPRE_A;
+pub type UsbPre = rcc::cfgr::OTGFSPRE;
+pub type AdcPre = rcc::cfgr::ADCPRE;
 
 impl Config {
     pub const fn from_cfgr(cfgr: CFGR) -> Self {
         let hse = cfgr.hse;
+        let hse_bypass = cfgr.hse_bypass;
         let pllsrcclk = if let Some(hse) = hse { hse } else { HSI / 2 };
 
         let pllmul = if let Some(sysclk) = cfgr.sysclk {
@@ -632,7 +654,7 @@ impl Config {
         // usbpre == false: divide clock by 1.5, otherwise no division
         #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
         let usbpre = match (hse, pllmul_bits, sysclk) {
-            (Some(_), Some(_), 72_000_000) => UsbPre::Div15,
+            (Some(_), Some(_), 72_000_000) => UsbPre::Div1_5,
             _ => UsbPre::Div1,
         };
 
@@ -649,6 +671,7 @@ impl Config {
 
         Self {
             hse,
+            hse_bypass,
             pllmul: pllmul_bits,
             hpre: hpre_bits,
             ppre1: ppre1_bits,
@@ -656,6 +679,7 @@ impl Config {
             #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
             usbpre,
             adcpre: apre_bits,
+            allow_overclock: false,
         }
     }
 
@@ -699,11 +723,12 @@ impl Config {
         );
 
         assert!(
-            sysclk <= 72_000_000
-                && hclk <= 72_000_000
-                && pclk1 <= 36_000_000
-                && pclk2 <= 72_000_000
-                && adcclk <= 14_000_000
+            self.allow_overclock
+                || (sysclk <= 72_000_000
+                    && hclk <= 72_000_000
+                    && pclk1 <= 36_000_000
+                    && pclk2 <= 72_000_000
+                    && adcclk <= 14_000_000)
         );
 
         Clocks {
@@ -730,6 +755,7 @@ fn rcc_config_usb() {
     let config = Config::from_cfgr(cfgr);
     let config_expected = Config {
         hse: Some(8_000_000),
+        hse_bypass: false,
         pllmul: Some(4),
         hpre: HPre::Div1,
         ppre1: PPre::Div2,
@@ -737,6 +763,7 @@ fn rcc_config_usb() {
         #[cfg(any(feature = "stm32f103", feature = "connectivity"))]
         usbpre: UsbPre::Div1,
         adcpre: AdcPre::Div8,
+        allow_overclock: false,
     };
     assert_eq!(config, config_expected);
 

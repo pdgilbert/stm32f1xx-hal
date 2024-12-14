@@ -7,12 +7,67 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-- Move from bors/manual merge to GH merge queue
-- Add tools/check.py python script for local check
-- Add changelog check on PRs
-- Replace UB code by a legitimate pointer access
-- Reexport `Direction` from `qei`
-- Add dac
+### Breaking changes
+
+- Relax pin type generics for `Serial`, `I2c`, `Spi`, `Can`, `Qei`, `PwmInput`. [#462] [#516]
+  ~~Use enums of pin tuples and `Enum::from<(tuple)>` for pin remap before passing to peripheral.~~
+  Use pin enums and `impl RInto<(enum), R>` for peripheral constructors.
+  Add `RInto` trait and `Rmp` peripheral wrapper, add `remap` for peripherals. [#514]
+  Remove `RemapStruct`s. [#462] [#506] [#509]
+- Use independent `Spi` and `SpiSlave` structures instead of `OP` generic [#462]
+- Take `&Clocks` instead of `Clocks` [#498]
+- Temporary replace `stm32f1` with `stm32f1-staging` [#503]
+- `Spi` now takes `Option<PIN>` for `SCK`, `MISO`, `MOSI` [#514]
+- move `Qei` mod inside `pwm_input` mod [#516]
+
+### Changed
+
+- Update `bxcan`, `heapless`, `mfrc522`, reenable `mpu9250` example [#513]
+- PWM timer auto reload value is now preloaded/buffered [#453]
+- Move from bors/manual merge to GH merge queue [#467]
+- Replace UB code by a legitimate pointer access [#480]
+- Fix flash error flag clearing [#489]
+- Clarify README for windows users [#496]
+- Check "device selected" in `build.rs` [#502]
+- Use gpio field enums internally [#506]
+- Unmacro `dma.rs` [#505]
+- Updated `usb-device` and `usbd-serial` to latest versions [#510]
+- Rework pin remaps, fix CAN1 remap [#511]
+- Rework USART remap, 
+
+### Added
+
+- Allow to set HSE bypass bit in `RCC` clock configuration register to use an external clock input on the `OSC_IN` pin [#485]
+- initial support of `embedded-hal-1.0` [#416]
+- Add tools/check.py python script for local check [#467]
+- Add changelog check on PRs [#467]
+- Reexport `Direction` from `qei` [#479]
+- Add DAC [#483]
+- Add an option to allow overclocking [#494]
+- `new` on gpio mode [#506]
+- Add `Serial` `rx`/`tx` constructors [#509]
+
+[#416]: https://github.com/stm32-rs/stm32f1xx-hal/pull/416
+[#453]: https://github.com/stm32-rs/stm32f1xx-hal/pull/453
+[#462]: https://github.com/stm32-rs/stm32f1xx-hal/pull/462
+[#467]: https://github.com/stm32-rs/stm32f1xx-hal/pull/467
+[#479]: https://github.com/stm32-rs/stm32f1xx-hal/pull/479
+[#480]: https://github.com/stm32-rs/stm32f1xx-hal/pull/480
+[#483]: https://github.com/stm32-rs/stm32f1xx-hal/pull/483
+[#485]: https://github.com/stm32-rs/stm32f1xx-hal/pull/485
+[#489]: https://github.com/stm32-rs/stm32f1xx-hal/pull/489
+[#494]: https://github.com/stm32-rs/stm32f1xx-hal/pull/494
+[#496]: https://github.com/stm32-rs/stm32f1xx-hal/pull/496
+[#498]: https://github.com/stm32-rs/stm32f1xx-hal/pull/498
+[#502]: https://github.com/stm32-rs/stm32f1xx-hal/pull/502
+[#503]: https://github.com/stm32-rs/stm32f1xx-hal/pull/503
+[#505]: https://github.com/stm32-rs/stm32f1xx-hal/pull/505
+[#506]: https://github.com/stm32-rs/stm32f1xx-hal/pull/506
+[#509]: https://github.com/stm32-rs/stm32f1xx-hal/pull/509
+[#510]: https://github.com/stm32-rs/stm32f1xx-hal/pull/510
+[#511]: https://github.com/stm32-rs/stm32f1xx-hal/pull/511
+[#514]: https://github.com/stm32-rs/stm32f1xx-hal/pull/514
+[#516]: https://github.com/stm32-rs/stm32f1xx-hal/pull/516
 
 ## [v0.10.0] - 2022-12-12
 

@@ -4,9 +4,11 @@
 
 [HAL]: https://crates.io/crates/embedded-hal
 
-[![Continuous integration](https://github.com/stm32-rs/stm32f1xx-hal/workflows/Continuous%20integration/badge.svg)](https://github.com/stm32-rs/stm32f1xx-hal)
-[![crates.io](https://img.shields.io/crates/v/stm32f1xx-hal.svg)](https://crates.io/crates/stm32f1xx-hal)
+[![Crates.io](https://img.shields.io/crates/d/stm32f1xx-hal.svg)](https://crates.io/crates/stm32f1xx-hal)
+[![Crates.io](https://img.shields.io/crates/v/stm32f1xx-hal.svg)](https://crates.io/crates/stm32f1xx-hal)
 [![Released API docs](https://docs.rs/stm32f1xx-hal/badge.svg)](https://docs.rs/stm32f1xx-hal)
+[![dependency status](https://deps.rs/repo/github/stm32-rs/stm32f1xx-hal/status.svg)](https://deps.rs/repo/github/stm32-rs/stm32f1xx-hal)
+[![Continuous integration](https://github.com/stm32-rs/stm32f1xx-hal/workflows/Continuous%20integration/badge.svg)](https://github.com/stm32-rs/stm32f1xx-hal)
 
 ## Quick start guide
 
@@ -62,8 +64,9 @@ item required, but not found: eh_personality`. This unhelpful error message
 is fixed by compiling for the right target.
 
 We also need to tell Rust how to link our executable, and how to lay out the
-result in memory. To accomplish all this, copy [.cargo/config](.cargo/config) and
-[memory.x](memory.x) from the stm32f1xx-hal repo to your project.
+result in memory. To accomplish all this, copy
+[.cargo/config.toml](.cargo/config.toml) and [memory.x](memory.x) from the
+stm32f1xx-hal repo to your project.
 
 ```bash
 cargo build
@@ -102,6 +105,7 @@ working directory.
   ```batch
   echo set auto-load safe-path %CD% >> %USERPROFILE%\.gdbinit
   ```
+  *You may need restart your computer*
 
 If everything was successful, cargo should compile your project, start gdb,
 load your program and give you a prompt. If you type `continue` in the gdb
@@ -159,6 +163,7 @@ You may need to give `cargo` permission to call `gdb` from the working directory
   ```batch
   echo set auto-load safe-path %CD% >> %USERPROFILE%\.gdbinit
   ```
+  *You may need restart your computer*
 
 Compile, load, and launch the hardware debugger.
 ```bash

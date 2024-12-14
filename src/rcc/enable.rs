@@ -77,7 +77,7 @@ bus! {
 bus! {
     DAC => (APB1, 29),
 }
-#[cfg(all(feature = "stm32f103", feature = "high"))]
+#[cfg(any(all(feature = "stm32f103", feature = "high"), feature = "connectivity"))]
 bus! {
     ADC3 => (APB2, 15),
     UART4 => (APB1, 19),
@@ -165,14 +165,14 @@ bus! {
     TIM5 => (APB1, 3),
 }
 
-#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high",)))]
+#[cfg(any(feature = "xl", all(feature = "stm32f100", feature = "high")))]
 bus! {
     TIM12 => (APB1, 6),
     TIM13 => (APB1, 7),
     TIM14 => (APB1, 8),
 }
 
-#[cfg(all(feature = "stm32f103", feature = "high",))]
+#[cfg(all(feature = "stm32f103", feature = "high"))]
 bus! {
     TIM8 => (APB2, 13),
 }
@@ -184,7 +184,7 @@ bus! {
     TIM11 => (APB2, 21),
 }
 
-#[cfg(any(feature = "stm32f102", feature = "stm32f103"))]
+#[cfg(feature = "stm32f103")] // feature = "stm32f102"
 bus! {
     USB => (APB1, 23),
 }

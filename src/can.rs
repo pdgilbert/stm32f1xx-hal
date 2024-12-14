@@ -2,135 +2,158 @@
 //!
 //! ## Alternate function remapping
 //!
-//! TX: Alternate Push-Pull Output
-//! RX: Input
-//!
 //! ### CAN1
 //!
-//! | Function | NoRemap | Remap |
-//! |----------|---------|-------|
-//! | TX       | PA12    | PB9   |
-//! | RX       | PA11    | PB8   |
+//! | Function \ Remap | 0 (default) | 1    |
+//! |------------------|-------------|------|
+//! | TX (A-PP)        | PA12        | PB9  |
+//! | RX (I-F/PU)      | PA11        | PB8  |
 //!
 //! ### CAN2
 //!
-//! | Function | NoRemap | Remap |
-//! |----------|---------|-------|
-//! | TX       | PB6     | PB13  |
-//! | RX       | PB5     | PB12  |
+//! | Function \ Remap | 0 (default) | 1    |
+//! |------------------|-------------|------|
+//! | TX (A-PP)        | PB6         | PB13 |
+//! | RX (I-F/PU)      | PB5         | PB12 |
 
-use crate::afio::MAPR;
-use crate::gpio::{self, Alternate, Input};
+use crate::afio::{self, RInto, Rmp};
+use crate::gpio::{Floating, UpMode};
 use crate::pac::{self, RCC};
 
-pub trait Pins: crate::Sealed {
-    type Instance;
-    fn remap(mapr: &mut MAPR);
+pub trait CanExt: Sized + Instance {
+    fn can<PULL: UpMode>(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+        pins: (impl RInto<Self::Tx, 0>, impl RInto<Self::Rx<PULL>, 0>),
+    ) -> Can<Self, PULL>;
+    fn can_loopback(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+    ) -> Can<Self, Floating>;
 }
 
-impl<INMODE, OUTMODE> crate::Sealed
-    for (gpio::PA12<Alternate<OUTMODE>>, gpio::PA11<Input<INMODE>>)
-{
-}
-impl<INMODE, OUTMODE> Pins for (gpio::PA12<Alternate<OUTMODE>>, gpio::PA11<Input<INMODE>>) {
-    type Instance = pac::CAN1;
-
-    fn remap(mapr: &mut MAPR) {
-        #[cfg(not(feature = "connectivity"))]
-        mapr.modify_mapr(|_, w| unsafe { w.can_remap().bits(0) });
-        #[cfg(feature = "connectivity")]
-        mapr.modify_mapr(|_, w| unsafe { w.can1_remap().bits(0) });
+impl<CAN: Instance> CanExt for CAN {
+    fn can<PULL: UpMode>(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+        pins: (impl RInto<Self::Tx, 0>, impl RInto<Self::Rx<PULL>, 0>),
+    ) -> Can<Self, PULL> {
+        Can::new(
+            self,
+            #[cfg(not(feature = "connectivity"))]
+            usb,
+            pins,
+        )
+    }
+    fn can_loopback(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+    ) -> Can<Self, Floating> {
+        Can::new_loopback(
+            self,
+            #[cfg(not(feature = "connectivity"))]
+            usb,
+        )
     }
 }
 
-impl<INMODE, OUTMODE> crate::Sealed for (gpio::PB9<Alternate<OUTMODE>>, gpio::PB8<Input<INMODE>>) {}
-impl<INMODE, OUTMODE> Pins for (gpio::PB9<Alternate<OUTMODE>>, gpio::PB8<Input<INMODE>>) {
-    type Instance = pac::CAN1;
-
-    fn remap(mapr: &mut MAPR) {
-        #[cfg(not(feature = "connectivity"))]
-        mapr.modify_mapr(|_, w| unsafe { w.can_remap().bits(0b10) });
-        #[cfg(feature = "connectivity")]
-        mapr.modify_mapr(|_, w| unsafe { w.can1_remap().bits(0b10) });
-    }
-}
-
+pub trait Instance: crate::rcc::Enable + afio::CanCommon {}
+impl Instance for pac::CAN1 {}
 #[cfg(feature = "connectivity")]
-impl<INMODE, OUTMODE> crate::Sealed
-    for (gpio::PB13<Alternate<OUTMODE>>, gpio::PB12<Input<INMODE>>)
-{
-}
-#[cfg(feature = "connectivity")]
-impl<INMODE, OUTMODE> Pins for (gpio::PB13<Alternate<OUTMODE>>, gpio::PB12<Input<INMODE>>) {
-    type Instance = pac::CAN2;
-
-    fn remap(mapr: &mut MAPR) {
-        mapr.modify_mapr(|_, w| w.can2_remap().clear_bit());
-    }
-}
-
-#[cfg(feature = "connectivity")]
-impl<INMODE, OUTMODE> crate::Sealed for (gpio::PB6<Alternate<OUTMODE>>, gpio::PB5<Input<INMODE>>) {}
-#[cfg(feature = "connectivity")]
-impl<INMODE, OUTMODE> Pins for (gpio::PB6<Alternate<OUTMODE>>, gpio::PB5<Input<INMODE>>) {
-    type Instance = pac::CAN2;
-
-    fn remap(mapr: &mut MAPR) {
-        mapr.modify_mapr(|_, w| w.can2_remap().set_bit());
-    }
-}
+impl Instance for pac::CAN2 {}
 
 /// Interface to the CAN peripheral.
-pub struct Can<Instance> {
-    _peripheral: Instance,
+#[allow(unused)]
+pub struct Can<CAN: Instance, PULL = Floating> {
+    can: CAN,
+    pins: (Option<CAN::Tx>, Option<CAN::Rx<PULL>>),
 }
 
-impl<Instance> Can<Instance>
-where
-    Instance: crate::rcc::Enable,
-{
-    /// Creates a CAN interaface.
+impl<CAN: Instance, const R: u8> Rmp<CAN, R> {
+    pub fn can<PULL: UpMode>(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+        pins: (impl RInto<CAN::Tx, R>, impl RInto<CAN::Rx<PULL>, R>),
+    ) -> Can<CAN, PULL> {
+        Can::_new(
+            self.0,
+            #[cfg(not(feature = "connectivity"))]
+            usb,
+            (Some(pins.0), Some(pins.1)),
+        )
+    }
+    pub fn can_loopback(
+        self,
+        #[cfg(not(feature = "connectivity"))] usb: pac::USB,
+    ) -> Can<CAN, Floating> {
+        Can::new_loopback(
+            self.0,
+            #[cfg(not(feature = "connectivity"))]
+            usb,
+        )
+    }
+}
+
+impl<CAN: Instance, PULL: UpMode> Can<CAN, PULL> {
+    /// Creates a CAN interface.
     ///
     /// CAN shares SRAM with the USB peripheral. Take ownership of USB to
     /// prevent accidental shared usage.
-    #[cfg(not(feature = "connectivity"))]
-    pub fn new(can: Instance, _usb: pac::USB) -> Can<Instance> {
-        let rcc = unsafe { &(*RCC::ptr()) };
-        Instance::enable(rcc);
-
-        Can { _peripheral: can }
+    pub fn new(
+        can: CAN,
+        #[cfg(not(feature = "connectivity"))] _usb: pac::USB,
+        pins: (impl RInto<CAN::Tx, 0>, impl RInto<CAN::Rx<PULL>, 0>),
+    ) -> Can<CAN, PULL> {
+        Self::_new(
+            can,
+            #[cfg(not(feature = "connectivity"))]
+            _usb,
+            (Some(pins.0), Some(pins.1)),
+        )
     }
 
-    /// Creates a CAN interaface.
-    #[cfg(feature = "connectivity")]
-    pub fn new(can: Instance) -> Can<Instance> {
+    fn _new<const R: u8>(
+        can: CAN,
+        #[cfg(not(feature = "connectivity"))] _usb: pac::USB,
+        pins: (
+            Option<impl RInto<CAN::Tx, R>>,
+            Option<impl RInto<CAN::Rx<PULL>, R>>,
+        ),
+    ) -> Can<CAN, PULL> {
         let rcc = unsafe { &(*RCC::ptr()) };
-        Instance::enable(rcc);
+        CAN::enable(rcc);
 
-        Can { _peripheral: can }
+        let pins = (pins.0.map(RInto::rinto), pins.1.map(RInto::rinto));
+        Can { can, pins }
     }
 
-    /// Routes CAN TX signals and RX signals to pins.
-    pub fn assign_pins<P>(&self, _pins: P, mapr: &mut MAPR)
-    where
-        P: Pins<Instance = Instance>,
-    {
-        P::remap(mapr);
+    /// Creates a CAN interface in loopback mode
+    pub fn new_loopback(
+        can: CAN,
+        #[cfg(not(feature = "connectivity"))] _usb: pac::USB,
+    ) -> Can<CAN, PULL> {
+        let rcc = unsafe { &(*RCC::ptr()) };
+        CAN::enable(rcc);
+
+        Can {
+            can,
+            pins: (None, None),
+        }
     }
 }
 
-unsafe impl bxcan::Instance for Can<pac::CAN1> {
+unsafe impl<PULL> bxcan::Instance for Can<pac::CAN1, PULL> {
     const REGISTERS: *mut bxcan::RegisterBlock = pac::CAN1::ptr() as *mut _;
 }
 
 #[cfg(feature = "connectivity")]
-unsafe impl bxcan::Instance for Can<pac::CAN2> {
+unsafe impl<PULL> bxcan::Instance for Can<pac::CAN2, PULL> {
     const REGISTERS: *mut bxcan::RegisterBlock = pac::CAN2::ptr() as *mut _;
 }
 
-unsafe impl bxcan::FilterOwner for Can<pac::CAN1> {
+unsafe impl<PULL> bxcan::FilterOwner for Can<pac::CAN1, PULL> {
     const NUM_FILTER_BANKS: u8 = 28;
 }
 
 #[cfg(feature = "connectivity")]
-unsafe impl bxcan::MasterInstance for Can<pac::CAN1> {}
+unsafe impl<PULL> bxcan::MasterInstance for Can<pac::CAN1, PULL> {}

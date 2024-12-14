@@ -14,12 +14,7 @@ use cortex_m::asm;
 use nb::block;
 
 use cortex_m_rt::entry;
-use stm32f1xx_hal::{
-    pac,
-    prelude::*,
-    serial::{Config, Serial},
-};
-use unwrap_infallible::UnwrapInfallible;
+use stm32f1xx_hal::{pac, prelude::*, serial::Config};
 
 #[entry]
 fn main() -> ! {
@@ -36,7 +31,7 @@ fn main() -> ! {
     let clocks = rcc.cfgr.freeze(&mut flash.acr);
 
     // Prepare the alternate function I/O registers
-    let mut afio = p.AFIO.constrain();
+    //let mut afio = p.AFIO.constrain();
 
     // Prepare the GPIOB peripheral
     let mut gpiob = p.GPIOB.split();
@@ -61,17 +56,13 @@ fn main() -> ! {
 
     // Set up the usart device. Take ownership over the USART register and tx/rx pins. The rest of
     // the registers are used to enable and configure the device.
-    let mut serial = Serial::new(
-        p.USART3,
-        (tx, rx),
-        &mut afio.mapr,
-        Config::default().baudrate(9600.bps()),
-        &clocks,
-    );
+    let mut serial = p
+        .USART3
+        .serial((tx, rx), Config::default().baudrate(115200.bps()), &clocks);
 
     // Loopback test. Write `X` and wait until the write is successful.
     let sent = b'X';
-    block!(serial.tx.write(sent)).unwrap_infallible();
+    block!(serial.tx.write_u8(sent)).unwrap();
 
     // Read the byte that was just sent. Blocks until the read is complete
     let received = block!(serial.rx.read()).unwrap();
@@ -84,10 +75,10 @@ fn main() -> ! {
 
     // You can also split the serial struct into a receiving and a transmitting part
     let (mut tx, mut rx) = serial.split();
-    let sent = b'Y';
-    block!(tx.write(sent)).unwrap_infallible();
     let received = block!(rx.read()).unwrap();
-    assert_eq!(received, sent);
+    //let sent = b'Y';
+    block!(tx.write_u8(received)).unwrap();
+    //assert_eq!(received, sent);
     asm::bkpt();
 
     loop {}

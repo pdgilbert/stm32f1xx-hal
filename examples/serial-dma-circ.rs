@@ -26,7 +26,7 @@ fn main() -> ! {
 
     let clocks = rcc.cfgr.freeze(&mut flash.acr);
 
-    let mut afio = p.AFIO.constrain();
+    //let mut afio = p.AFIO.constrain();
     let channels = p.DMA1.split();
 
     let mut gpioa = p.GPIOA.split();
@@ -51,7 +51,6 @@ fn main() -> ! {
     let serial = Serial::new(
         p.USART1,
         (tx, rx),
-        &mut afio.mapr,
         Config::default().baudrate(9_600.bps()),
         &clocks,
     );

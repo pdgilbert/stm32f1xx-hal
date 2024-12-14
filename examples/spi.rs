@@ -6,24 +6,19 @@
 use cortex_m_rt::entry;
 use panic_halt as _;
 
-use embedded_hal::spi::{Mode, Phase, Polarity};
 pub const MODE: Mode = Mode {
     phase: Phase::CaptureOnSecondTransition,
     polarity: Polarity::IdleHigh,
 };
 
 use stm32f1xx_hal::{
-    gpio::gpioa::PA4,
-    gpio::{Output, PushPull},
+    gpio::{Output, PA4},
     pac::{Peripherals, SPI1},
     prelude::*,
-    spi::{Pins, Spi, Spi1NoRemap},
+    spi::{Mode, Phase, Polarity, Spi},
 };
 
-fn setup() -> (
-    Spi<SPI1, Spi1NoRemap, impl Pins<Spi1NoRemap>, u8>,
-    PA4<Output<PushPull>>,
-) {
+fn setup() -> (Spi<SPI1, u8>, PA4<Output>) {
     let dp = Peripherals::take().unwrap();
 
     let mut flash = dp.FLASH.constrain();
@@ -31,23 +26,19 @@ fn setup() -> (
 
     let clocks = rcc.cfgr.freeze(&mut flash.acr);
 
-    let mut afio = dp.AFIO.constrain();
+    //let mut afio = dp.AFIO.constrain();
     let mut gpioa = dp.GPIOA.split();
 
     // SPI1
-    let sck = gpioa.pa5.into_alternate_push_pull(&mut gpioa.crl);
+    let sck = gpioa.pa5;
     let miso = gpioa.pa6;
-    let mosi = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
+    let mosi = gpioa.pa7;
     let cs = gpioa.pa4.into_push_pull_output(&mut gpioa.crl);
 
-    let spi = Spi::spi1(
-        dp.SPI1,
-        (sck, miso, mosi),
-        &mut afio.mapr,
-        MODE,
-        1.MHz(),
-        clocks,
-    );
+    let spi = dp
+        .SPI1
+        //.remap(&mut afio.mapr) // if you want to use PB3, PB4, PB5
+        .spi((Some(sck), Some(miso), Some(mosi)), MODE, 1.MHz(), &clocks);
 
     (spi, cs)
 }
