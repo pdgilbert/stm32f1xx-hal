@@ -11,9 +11,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-#      - name: Changelog updated
-#        uses: Zomzog/changelog-checker@v1.2.0
-#        with:
-#          fileName: CHANGELOG.md
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Changelog updated
+        uses: Zomzog/changelog-checker@v1.2.0
+        with:
+          fileName: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
